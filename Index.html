@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>TMA Simple Ad</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://js.onclckvd.com/in-stream-ad-admanager/tma.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; }
+        body {
+            background: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 16px;
+        }
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-radius: 28px;
+            padding: 32px 24px;
+            max-width: 360px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        }
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .sub {
+            font-size: 0.8rem;
+            color: var(--tg-theme-hint-color, #8e8e93);
+            margin-bottom: 20px;
+        }
+        .counter-box {
+            background: var(--tg-theme-bg-color, #fff);
+            border-radius: 20px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .counter-number {
+            font-size: 3.2rem;
+            font-weight: 800;
+            color: var(--tg-theme-button-color, #2481cc);
+        }
+        .counter-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--tg-theme-hint-color, #8e8e93);
+        }
+        .status {
+            background: var(--tg-theme-bg-color, #fff);
+            border-radius: 40px;
+            padding: 10px 16px;
+            margin: 12px 0 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+        }
+        .led {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #8e8e93;
+        }
+        .led.ready { background: #34c759; box-shadow: 0 0 6px #34c75988; }
+        .led.error { background: #ff3b30; box-shadow: 0 0 6px #ff3b3088; }
+        .led.loading { background: #ff9f0a; box-shadow: 0 0 6px #ff9f0a88; }
+        button {
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #fff);
+            border: none;
+            border-radius: 60px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 16px 20px;
+            width: 100%;
+            cursor: pointer;
+            transition: 0.15s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        button:active { transform: scale(0.97); opacity: 0.85; }
+        button:disabled { opacity: 0.4; pointer-events: none; }
+        .reset-btn {
+            background: transparent;
+            color: var(--tg-theme-text-color, #000);
+            box-shadow: none;
+            border: 1px solid var(--tg-theme-hint-color, #c6c6c8);
+            margin-top: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .footer {
+            margin-top: 18px;
+            font-size: 0.65rem;
+            color: var(--tg-theme-hint-color, #8e8e93);
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>📺 Ad Show</h1>
+    <div class="sub">Spot ID: 6121821 · tap button</div>
+
+    <div class="counter-box">
+        <div class="counter-number" id="counterDisplay">0</div>
+        <div class="counter-label">Ads shown</div>
+    </div>
+
+    <div class="status" id="statusBar">
+        <span class="led loading" id="ledIndicator"></span>
+        <span id="statusText">Initialising…</span>
+    </div>
+
+    <button id="showAdBtn">▶ Show Ad</button>
+    <button id="resetBtn" class="reset-btn">↻ Reset counter</button>
+
+    <div class="footer">simple manual mode · 0 = unlimited</div>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        const SPOT_ID = '6121821';
+        const dom = {
+            counter: document.getElementById('counterDisplay'),
+            statusText: document.getElementById('statusText'),
+            led: document.getElementById('ledIndicator'),
+            showBtn: document.getElementById('showAdBtn'),
+            resetBtn: document.getElementById('resetBtn'),
+        };
+
+        let showAdFunction = null; // holds the SDK's show() method
+        let adCounter = 0;
+        let isInitialised = false;
+        let isAdInProgress = false;
+
+        // ---- UI updates ----
+        function setStatus(msg, type = 'loading') {
+            dom.statusText.textContent = msg;
+            dom.led.className = 'led ' + type;
+        }
+
+        function updateCounter() {
+            dom.counter.textContent = adCounter;
+        }
+
+        function setButtonEnabled(enabled) {
+            dom.showBtn.disabled = !enabled || isAdInProgress;
+        }
+
+        // ---- SDK initialisation ----
+        async function initAdEngine() {
+            try {
+                setStatus('Initialising ad engine…', 'loading');
+                dom.showBtn.disabled = true;
+
+                if (typeof window.initCdTma !== 'function') {
+                    throw new Error('initCdTma not available – SDK script may have failed to load.');
+                }
+
+                const showFn = await window.initCdTma({ id: SPOT_ID });
+
+                if (typeof showFn !== 'function') {
+                    throw new Error('SDK returned invalid show function (not a function)');
+                }
+
+                showAdFunction = showFn;
+                isInitialised = true;
+                setStatus('✅ Ready — tap Show Ad', 'ready');
+                dom.showBtn.disabled = false;
+                console.log('[Init] Ad engine ready, spot', SPOT_ID);
+                return true;
+            } catch (err) {
+                console.error('[Init] Error:', err);
+                setStatus('❌ Init failed: ' + (err.message || 'unknown error'), 'error');
+                dom.showBtn.disabled = true;
+                isInitialised = false;
+                return false;
+            }
+        }
+
+        // ---- Show Ad button handler ----
+        async function handleShowAd() {
+            if (!isInitialised || !showAdFunction) {
+                setStatus('Engine not ready – retrying…', 'loading');
+                await initAdEngine();
+                if (!isInitialised) return;
+            }
+
+            if (isAdInProgress) return;
+
+            isAdInProgress = true;
+            dom.showBtn.disabled = true;
+            setStatus('⏳ Showing ad…', 'loading');
+
+            try {
+                // Call the SDK show() method – it returns a Promise
+                await showAdFunction();
+
+                // Success
+                adCounter++;
+                updateCounter();
+                setStatus(`✅ Ad shown (${adCounter})`, 'ready');
+                console.log('[Ad] Success, total:', adCounter);
+            } catch (err) {
+                // Ad failed or was skipped
+                setStatus(`⚠️ Ad failed: ${err?.message || 'unknown'}`, 'error');
+                console.warn('[Ad] Error:', err);
+                // Do NOT increment counter on failure – user may want to retry
+            } finally {
+                isAdInProgress = false;
+                dom.showBtn.disabled = !isInitialised;
+                // Re-enable only if initialised
+            }
+        }
+
+        // ---- Reset ----
+        function resetCounter() {
+            adCounter = 0;
+            updateCounter();
+            setStatus('↻ Counter reset', 'ready');
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+            }
+        }
+
+        // ---- Bootstrap ----
+        async function bootstrap() {
+            // Telegram WebApp
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.ready();
+                window.Telegram.WebApp.expand();
+            }
+
+            // Initialise SDK
+            await initAdEngine();
+
+            // Event listeners
+            dom.showBtn.addEventListener('click', handleShowAd);
+            dom.resetBtn.addEventListener('click', resetCounter);
+        }
+
+        // ---- Start ----
+        bootstrap().catch(err => {
+            console.error('[Bootstrap] fatal:', err);
+            setStatus('💥 Startup error: ' + (err.message || 'unknown'), 'error');
+        });
+
+        // Expose for debugging
+        window.__simpleAd = {
+            init: initAdEngine,
+            show: handleShowAd,
+            reset: resetCounter,
+            status: () => ({ isInitialised, adCounter, isAdInProgress })
+        };
+    })();
+</script>
+</body>
+</html> 
