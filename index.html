@@ -1,277 +1,521 @@
-<!DOCTYPE html>
+            <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>TMA Simple Ad</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TMA Auto Ad Loop</title>
+    
+    <!-- Telegram & Ad SDKs -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://js.onclckvd.com/in-stream-ad-admanager/tma.js"></script>
+
     <style>
-        * { box-sizing: border-box; margin: 0; }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
         body {
-            background: var(--tg-theme-bg-color, #fff);
-            color: var(--tg-theme-text-color, #000);
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            font-family: system-ui, -apple-system, sans-serif;
-            padding: 16px;
+            margin: 0;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            padding: 20px;
         }
+
         .card {
-            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            background-color: var(--tg-theme-secondary-bg-color, #f5f5f5);
             border-radius: 28px;
-            padding: 32px 24px;
-            max-width: 360px;
+            padding: 28px 24px;
             width: 100%;
+            max-width: 380px;
             text-align: center;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            transition: all 0.2s ease;
+            backdrop-filter: blur(0px);
         }
+
         h1 {
-            font-size: 1.8rem;
+            font-size: 1.7rem;
             font-weight: 700;
-            margin-bottom: 4px;
+            margin: 0 0 6px 0;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, var(--tg-theme-text-color, #000) 0%, var(--tg-theme-hint-color, #666) 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
         }
-        .sub {
-            font-size: 0.8rem;
-            color: var(--tg-theme-hint-color, #8e8e93);
-            margin-bottom: 20px;
+
+        .badge {
+            display: inline-block;
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, white);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 40px;
+            margin-bottom: 18px;
+            letter-spacing: 0.3px;
         }
-        .counter-box {
-            background: var(--tg-theme-bg-color, #fff);
-            border-radius: 20px;
-            padding: 16px;
-            margin: 16px 0;
+
+        .stats-panel {
+            background: var(--tg-theme-bg-color, #ffffff);
+            border-radius: 24px;
+            padding: 18px 12px;
+            margin: 20px 0;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05), 0 2px 6px rgba(0,0,0,0.02);
         }
-        .counter-number {
+
+        .counter {
             font-size: 3.2rem;
             font-weight: 800;
+            line-height: 1;
             color: var(--tg-theme-button-color, #2481cc);
+            margin: 8px 0 4px;
         }
+
         .counter-label {
-            font-size: 0.75rem;
+            font-size: 0.85rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
+            font-weight: 500;
             color: var(--tg-theme-hint-color, #8e8e93);
         }
-        .status {
-            background: var(--tg-theme-bg-color, #fff);
-            border-radius: 40px;
-            padding: 10px 16px;
-            margin: 12px 0 20px;
+
+        .status-text {
             font-size: 0.9rem;
+            background: var(--tg-theme-secondary-bg-color, #efeff4);
+            padding: 10px 12px;
+            border-radius: 40px;
+            margin: 16px 0 18px;
             font-weight: 500;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
         }
+
         .led {
+            display: inline-block;
             width: 10px;
             height: 10px;
-            border-radius: 50%;
-            background: #8e8e93;
+            border-radius: 10px;
+            background-color: #34c759;
+            box-shadow: 0 0 4px #34c759;
+            transition: 0.2s;
         }
-        .led.ready { background: #34c759; box-shadow: 0 0 6px #34c75988; }
-        .led.error { background: #ff3b30; box-shadow: 0 0 6px #ff3b3088; }
-        .led.loading { background: #ff9f0a; box-shadow: 0 0 6px #ff9f0a88; }
+        .led.paused {
+            background-color: #ff9f0a;
+            box-shadow: 0 0 4px #ff9f0a;
+        }
+        .led.error {
+            background-color: #ff3b30;
+            box-shadow: 0 0 4px #ff3b30;
+        }
+
         button {
-            background: var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-text-color, #fff);
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
             border: none;
             border-radius: 60px;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 600;
-            padding: 16px 20px;
+            padding: 14px 20px;
             width: 100%;
             cursor: pointer;
-            transition: 0.15s;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.2s ease;
+            margin-top: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
-        button:active { transform: scale(0.97); opacity: 0.85; }
-        button:disabled { opacity: 0.4; pointer-events: none; }
+
+        button:active {
+            transform: scale(0.97);
+            opacity: 0.9;
+        }
+
         .reset-btn {
-            background: transparent;
+            background-color: transparent;
             color: var(--tg-theme-text-color, #000);
             box-shadow: none;
             border: 1px solid var(--tg-theme-hint-color, #c6c6c8);
-            margin-top: 10px;
+            margin-top: 12px;
             font-size: 0.9rem;
             font-weight: 500;
+            backdrop-filter: blur(4px);
         }
-        .footer {
-            margin-top: 18px;
-            font-size: 0.65rem;
+
+        .reset-btn:active {
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        .footer-note {
+            margin-top: 24px;
+            font-size: 0.7rem;
             color: var(--tg-theme-hint-color, #8e8e93);
-            opacity: 0.6;
+            opacity: 0.7;
         }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h1>📺 Ad Show</h1>
-    <div class="sub">Spot ID: 6122020 · tap button</div>
-
-    <div class="counter-box">
-        <div class="counter-number" id="counterDisplay">0</div>
-        <div class="counter-label">Ads shown</div>
+    <div class="badge">🎬 AUTO LOOP MODE</div>
+    <h1>TMA Ad Hub</h1>
+    <div class="stats-panel">
+        <div class="counter-label">ADS PLAYED</div>
+        <div class="counter" id="adCounterDisplay">0</div>
+        <div class="counter-label" style="margin-top: 8px;">🔄 continuous loop</div>
     </div>
 
-    <div class="status" id="statusBar">
-        <span class="led loading" id="ledIndicator"></span>
-        <span id="statusText">Initialising…</span>
+    <div class="status-text" id="statusMessage">
+        <span id="ledIndicator" class="led"></span>
+        <span id="statusLabel">Initializing ad engine...</span>
     </div>
 
-    <button id="showAdBtn">▶ Show Ad</button>
-    <button id="resetBtn" class="reset-btn">↻ Reset counter</button>
-
-    <div class="footer">simple manual mode · 0 = unlimited</div>
+    <button id="toggleLoopBtn">
+        <span>⏸️</span> Pause Loop
+    </button>
+    
+    <button id="resetCountBtn" class="reset-btn">
+        ↻ Reset counter
+    </button>
+    <div class="footer-note">
+        spot ID: 6122020 • ads play automatically in sequence
+    </div>
 </div>
 
 <script>
     (function() {
-        'use strict';
-
+        // ========================  CONFIGURATION  ========================
         const SPOT_ID = '6122020';
-        const dom = {
-            counter: document.getElementById('counterDisplay'),
-            statusText: document.getElementById('statusText'),
-            led: document.getElementById('ledIndicator'),
-            showBtn: document.getElementById('showAdBtn'),
-            resetBtn: document.getElementById('resetBtn'),
-        };
-
-        let showAdFunction = null; // holds the SDK's show() method
-        let adCounter = 0;
-        let isInitialised = false;
-        let isAdInProgress = false;
-
-        // ---- UI updates ----
-        function setStatus(msg, type = 'loading') {
-            dom.statusText.textContent = msg;
-            dom.led.className = 'led ' + type;
+        const DELAY_BETWEEN_ADS_MS = 2200;   // 2.2 sec between ads (smooth loop)
+        
+        // ========================  GLOBAL STATE  ========================
+        let showAdFunction = null;          // reference to the show() method from SDK
+        let loopActive = true;              // true = looping enabled, false = paused
+        let isLoopRunning = false;          // prevents multiple concurrent loops
+        let adCounter = 0;                  // total ads attempted (both success / fail but each "show" call)
+        let currentLoopPromise = null;      // (optional reference, for safety)
+        
+        // DOM elements
+        const toggleBtn = document.getElementById('toggleLoopBtn');
+        const resetCountBtn = document.getElementById('resetCountBtn');
+        const adCounterDisplay = document.getElementById('adCounterDisplay');
+        const statusLabelSpan = document.getElementById('statusLabel');
+        const ledIndicator = document.getElementById('ledIndicator');
+        
+        // Helper: update UI (counter + status message colors)
+        function updateUI() {
+            adCounterDisplay.innerText = adCounter;
         }
-
-        function updateCounter() {
-            dom.counter.textContent = adCounter;
+        
+        function setStatusMessage(text, isError = false, isPausedState = false) {
+            statusLabelSpan.innerText = text;
+            if (isError) {
+                ledIndicator.className = 'led error';
+            } else if (isPausedState) {
+                ledIndicator.className = 'led paused';
+            } else {
+                ledIndicator.className = 'led';
+            }
         }
-
-        function setButtonEnabled(enabled) {
-            dom.showBtn.disabled = !enabled || isAdInProgress;
+        
+        // Helper sleep promise
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
-
-        // ---- SDK initialisation ----
-        async function initAdEngine() {
-            try {
-                setStatus('Initialising ad engine…', 'loading');
-                dom.showBtn.disabled = true;
-
-                if (typeof window.initCdTma !== 'function') {
-                    throw new Error('initCdTma not available – SDK script may have failed to load.');
+        
+        // Async infinite loop runner: plays ads repeatedly respecting loopActive flag
+        async function runAutoLoop() {
+            // Prevent multiple loop instances
+            if (isLoopRunning) {
+                console.log('[Loop] Already running, skip duplicate start');
+                return;
+            }
+            
+            // Safety: need showAdFunction to be ready
+            if (!showAdFunction) {
+                setStatusMessage('Ad engine not ready, waiting...', true);
+                console.warn('[Loop] showAdFunction missing, cannot start loop');
+                return;
+            }
+            
+            isLoopRunning = true;
+            console.log('[Loop] Auto-loop started — infinite mode');
+            
+            // The main loop runs while loopActive flag is true AND showAdFunction exists
+            while (loopActive && showAdFunction) {
+                try {
+                    // Update status before playing
+                    setStatusMessage(`Playing ad #${adCounter + 1} ...`, false);
+                    console.log(`[Loop] Attempting ad #${adCounter + 1}`);
+                    
+                    // IMPORTANT: Call the TMA ad method that shows the interstitial/reward ad
+                    // This returns a Promise that resolves when ad is completed or dismissed.
+                    await showAdFunction();
+                    
+                    // Ad finished successfully (or at least completed the flow)
+                    adCounter++;
+                    updateUI();
+                    console.log(`[Loop] Ad #${adCounter} completed successfully`);
+                    setStatusMessage(`✅ Ad #${adCounter} done — next in ${DELAY_BETWEEN_ADS_MS/1000}s`, false);
+                    
+                } catch (adError) {
+                    // Ad error: user skip, network failure, no fill, or SDK internal error
+                    console.warn('[Loop] Ad error or skip:', adError);
+                    // Still count it as an "attempt" to maintain transparency (loop continues)
+                    adCounter++;
+                    updateUI();
+                    setStatusMessage(`⚠️ Ad attempt #${adCounter} interrupted — retrying soon`, true);
+                    
+                    // Short extra delay on error to avoid aggressive spamming
+                    await sleep(800);
                 }
-
-                const showFn = await window.initCdTma({ id: SPOT_ID });
-
-                if (typeof showFn !== 'function') {
-                    throw new Error('SDK returned invalid show function (not a function)');
+                
+                // If loop was deactivated during the ad or error handling, break out
+                if (!loopActive) break;
+                
+                // Wait before next ad (smooth looping, prevents CPU overload)
+                await sleep(DELAY_BETWEEN_ADS_MS);
+                
+                // Re-check active flag again after delay
+                if (!loopActive) break;
+                
+                // Edge: if showAdFunction became null for some reason, break loop
+                if (!showAdFunction) {
+                    setStatusMessage('Ad function lost — reinitializing required', true);
+                    break;
                 }
-
-                showAdFunction = showFn;
-                isInitialised = true;
-                setStatus('✅ Ready — tap Show Ad', 'ready');
-                dom.showBtn.disabled = false;
-                console.log('[Init] Ad engine ready, spot', SPOT_ID);
-                return true;
-            } catch (err) {
-                console.error('[Init] Error:', err);
-                setStatus('❌ Init failed: ' + (err.message || 'unknown error'), 'error');
-                dom.showBtn.disabled = true;
-                isInitialised = false;
+            }
+            
+            // Loop exited because loopActive became false OR showAdFunction missing
+            isLoopRunning = false;
+            if (!loopActive) {
+                setStatusMessage('⏸️ Loop paused — press "Resume Loop"', false, true);
+                console.log('[Loop] Auto-loop stopped (user pause)');
+            } else if (!showAdFunction) {
+                setStatusMessage('❌ Ad engine unavailable — contact support', true);
+            } else {
+                setStatusMessage('Loop idle', false);
+            }
+        }
+        
+        // Public method to start/resume loop (safe)
+        function startLoop() {
+            if (!showAdFunction) {
+                setStatusMessage('Waiting for ad engine...', true);
+                console.warn('[Start] Cannot start loop: ad engine not initialized');
                 return false;
             }
-        }
-
-        // ---- Show Ad button handler ----
-        async function handleShowAd() {
-            if (!isInitialised || !showAdFunction) {
-                setStatus('Engine not ready – retrying…', 'loading');
-                await initAdEngine();
-                if (!isInitialised) return;
+            
+            if (loopActive) {
+                console.log('[Start] Loop already active');
+                // If loop is already active but maybe isLoopRunning is false due to prior exit? we re-trigger.
+                if (!isLoopRunning) {
+                    runAutoLoop().catch(err => console.error('[Loop] Unhandled loop error', err));
+                }
+                return true;
             }
-
-            if (isAdInProgress) return;
-
-            isAdInProgress = true;
-            dom.showBtn.disabled = true;
-            setStatus('⏳ Showing ad…', 'loading');
-
-            try {
-                // Call the SDK show() method – it returns a Promise
-                await showAdFunction();
-
-                // Success
-                adCounter++;
-                updateCounter();
-                setStatus(`✅ Ad shown (${adCounter})`, 'ready');
-                console.log('[Ad] Success, total:', adCounter);
-            } catch (err) {
-                // Ad failed or was skipped
-                setStatus(`⚠️ Ad failed: ${err?.message || 'unknown'}`, 'error');
-                console.warn('[Ad] Error:', err);
-                // Do NOT increment counter on failure – user may want to retry
-            } finally {
-                isAdInProgress = false;
-                dom.showBtn.disabled = !isInitialised;
-                // Re-enable only if initialised
+            
+            // Resume from paused state
+            loopActive = true;
+            setStatusMessage('Resuming loop...', false);
+            // ensure we don't double-run loops
+            if (!isLoopRunning) {
+                runAutoLoop().catch(err => console.error('[Loop] runtime error', err));
             }
+            return true;
         }
-
-        // ---- Reset ----
+        
+        // Pause the loop gracefully
+        function pauseLoop() {
+            if (!loopActive) return;
+            loopActive = false;
+            setStatusMessage('⏸️ Pausing after current ad...', false, true);
+            console.log('[Loop] Pause requested — loop will stop after current ad/delay');
+            // The running loop will detect loopActive === false and exit soon.
+        }
+        
+        // Reset ad counter (does not affect loop state)
         function resetCounter() {
             adCounter = 0;
-            updateCounter();
-            setStatus('↻ Counter reset', 'ready');
+            updateUI();
+            setStatusMessage(loopActive ? 'Counter reset, loop continues' : 'Counter reset', false, !loopActive);
+            console.log('[UI] Ad counter reset to 0');
+        }
+        
+        // Update toggle button text based on loopActive flag
+        function updateToggleButton() {
+            if (loopActive) {
+                toggleBtn.innerHTML = '<span>⏸️</span> Pause Loop';
+            } else {
+                toggleBtn.innerHTML = '<span>▶️</span> Resume Loop';
+            }
+        }
+        
+        // Toggle between pause & resume
+        function onToggleLoop() {
+            if (loopActive) {
+                pauseLoop();
+            } else {
+                startLoop();
+            }
+            updateToggleButton();
+        }
+        
+        // ===============  AD ENGINE INITIALIZATION (with Spot ID) ===============
+        function initAdEngine() {
+            setStatusMessage('Initializing ad engine...', false);
+            // Use the global initCdTma function provided by tma.js
+            if (typeof window.initCdTma !== 'function') {
+                setStatusMessage('SDK not loaded — check network', true);
+                console.error('[Init] window.initCdTma not available');
+                return Promise.reject(new Error('initCdTma missing'));
+            }
+            
+            return window.initCdTma({ id: SPOT_ID })
+                .then(showFn => {
+                    if (typeof showFn !== 'function') {
+                        throw new Error('SDK did not return a valid show function');
+                    }
+                    showAdFunction = showFn;
+                    // Also attach to window for debugging (optional)
+                    window.__adShowFn = showFn;
+                    console.log('[Init] Ad engine ready, spot ID', SPOT_ID);
+                    setStatusMessage('✅ Ad engine ready — auto loop starting', false);
+                    return true;
+                })
+                .catch(initError => {
+                    console.error('[Init] Ad init failed:', initError);
+                    setStatusMessage(`Init failed: ${initError.message || 'unknown'}`, true);
+                    // keep showAdFunction = null, loop won't start
+                    return false;
+                });
+        }
+        
+        // ===============  BOOTSTRAP & AUTO LOOP TRIGGER ===============
+        async function bootstrap() {
+            // 1. Prepare Telegram WebApp environment
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.ready();
+                window.Telegram.WebApp.expand();
+                // Optional: set main button if needed but not required
+                console.log('[TG] WebApp ready & expanded');
+            } else {
+                console.warn('[TG] Telegram WebApp object missing, but continuing');
+            }
+            
+            // 2. Initialize ad SDK
+            const initSuccess = await initAdEngine();
+            
+            // 3. If initialization succeeded, start auto-loop immediately (automatic by requirement)
+            if (initSuccess && showAdFunction) {
+                // loopActive is already true by default
+                // Make sure we start the infinite looping 
+                // Use microtask to avoid race conditions
+                setTimeout(() => {
+                    if (showAdFunction && loopActive && !isLoopRunning) {
+                        runAutoLoop().catch(err => {
+                            console.error('[Fatal] Auto-loop crashed', err);
+                            setStatusMessage('Loop error, try reload', true);
+                        });
+                    } else if (showAdFunction && !isLoopRunning) {
+                        // edge: ensure loop starts if flag inactive? but loopActive true
+                        if (loopActive) runAutoLoop();
+                    }
+                }, 100);
+            } else {
+                // failed to init, but we'll show error and manual retry? Provide reset? But user can re-run via toggle? impossible because no show function.
+                setStatusMessage('Ad engine error — check spot ID / network', true);
+                // Disable toggle button if ad engine dead
+                toggleBtn.disabled = true;
+                toggleBtn.style.opacity = '0.5';
+            }
+            
+            // Update button text initially
+            updateToggleButton();
+        }
+        
+        // ===============  EVENT LISTENERS ===============
+        toggleBtn.addEventListener('click', () => {
+            if (!showAdFunction) {
+                window.Telegram?.WebApp?.showAlert?.('Ad engine not ready, please reload');
+                setStatusMessage('Engine missing, cannot toggle', true);
+                return;
+            }
+            onToggleLoop();
+            updateToggleButton();
+        });
+        
+        resetCountBtn.addEventListener('click', () => {
+            resetCounter();
+            // Optional haptic feedback if available
             if (window.Telegram?.WebApp?.HapticFeedback) {
                 window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
             }
-        }
-
-        // ---- Bootstrap ----
-        async function bootstrap() {
-            // Telegram WebApp
-            if (window.Telegram?.WebApp) {
-                window.Telegram.WebApp.ready();
-                window.Telegram.WebApp.expand();
-            }
-
-            // Initialise SDK
-            await initAdEngine();
-
-            // Event listeners
-            dom.showBtn.addEventListener('click', handleShowAd);
-            dom.resetBtn.addEventListener('click', resetCounter);
-        }
-
-        // ---- Start ----
-        bootstrap().catch(err => {
-            console.error('[Bootstrap] fatal:', err);
-            setStatus('💥 Startup error: ' + (err.message || 'unknown'), 'error');
         });
-
-        // Expose for debugging
-        window.__simpleAd = {
-            init: initAdEngine,
-            show: handleShowAd,
-            reset: resetCounter,
-            status: () => ({ isInitialised, adCounter, isAdInProgress })
+        
+        // Optional: when user closes or minimizes, we do not need to stop loop? But it's fine.
+        // Also handle visibility change? Not needed for requirement.
+        
+        // Start everything
+        bootstrap().catch(err => {
+            console.error('[Bootstrap] Critical error', err);
+            setStatusMessage('Startup error', true);
+        });
+        
+        // Additional safety: if the ad function disappears for some reason, but we keep state consistent.
+        // Also expose reset capability via console if needed (just for debugging)
+        window.__adLoopAPI = {
+            pause: () => { if (showAdFunction) pauseLoop(); updateToggleButton(); },
+            resume: () => { if (showAdFunction) startLoop(); updateToggleButton(); },
+            resetCounter,
+            status: () => ({ loopActive, isLoopRunning, adCounter, engineReady: !!showAdFunction })
         };
     })();
 </script>
 </body>
-</html> 
+</html>
+
+    
+         
+         
+        
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
